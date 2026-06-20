@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Checkout</title>
+        <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    </head>
+    <style>
+        body {
+            background-color: #365e5c;
+            border: none;
+            margin: 0;
+            padding: 10px;
+        }
+        .header {
+            background-color: #241b41;
+            color: #f97316;
+            font-weight: 550;
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 18px;
+            text-align: center;
+            border: aquamarine 2px solid;
+            border-radius: 15px;
+            padding: 5px;
+        }
+        .customer-details,
+        .order-details {
+            border: #365e5c 1px solid;
+            border-radius: 15px;
+            background-color: cadetblue;
+            padding: 10px;
+            font-size: 16px;
+            margin-top: 20px;
+            margin-bottom: 20px;
+            margin-left: 20px;
+            margin-right: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            font-size: 17px;
+        }
+        input,
+        select,
+        textarea {
+            width: 100%;
+            padding: 8px;
+            border: #241b41 1px solid;
+            border-radius: 12px;
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+            border: #241b41 1px solid;
+           
+        }       
+        .notes {
+            border: #241b41 1px solid;
+            border-radius: 15px;
+            padding: 10px;
+            margin-top: 20px;
+            margin-bottom: 20px;
+            margin-left: 20px;
+            margin-right: 20px;
+            background-color: cadetblue;
+        }     
+        .place-order-btn {
+            position: fixed;
+            left: 20px;
+            right: 20px;
+            bottom: 15px;
+            background-color: blue;
+            font-size: 17px;
+            font-weight: 550;
+            color: black;
+            border: none;
+            padding: 8px;
+            border-radius: 15px;
+            margin: 3px;
+        }
+
+        @media (max-width: 600px) {
+        .orders-grid, .menu-grid, .lists-grid, .stats-grid {
+            grid-template-columns: 1fr;
+        }
+        body {
+            padding: 12px;
+        }
+        .period-btns {
+            flex-wrap: wrap;
+        }
+        .search-row {
+            flex-direction: column;
+        }
+        .dish-actions {
+            flex-direction: column;
+        }
+    }
+
+    @media (min-width: 601px) and (max-width: 900px) {
+        .orders-grid, .menu-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        .lists-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @media (max-width: 600px) {
+        .menu-grid, .orders-grid, .restaurant-grid {
+            grid-template-columns: 1fr;
+        }
+        body {
+            padding: 12px;
+        }
+        h1 {
+            font-size: 20px;
+        }
+    }
+
+    </style>
+    <body>
+        <!--Header-->
+        <div class="header">
+            <h1>Checkout</h1>
+        </div>
+        <!--Customer Information-->
+        <div class="customer-details">
+            <h2>Customer Details</h2>
+        
+            <label for="name">Full Name:</label>
+            <input type="text" placeholder="Enter your name" id="name" required> <br><br>  
+            <label for="phone-number">Phone Number:</label>
+            <input type="tel" placeholder="Enter your phone number" id="phone-number" required><br><br>
+        </div>
+        
+        <!--Order Information-->
+        <div class="order-details">
+            <h2>Order Details</h2>
+            <label for="order-type">Order Type:</label>
+            <select id="order-type" required>
+                <option value="Dine-in" >Dine-in</option>
+                <option value="Take Away">Take Away</option>
+            </select>
+        </div>
+
+        <!--Notes-->
+        <div class="notes">
+            <h2>Special Instructions (Optional)</h2>
+            <textarea id="special-instructions" placeholder="No onions, extra sauce, etc."></textarea>
+        </div>
+
+        <!-- Place Order Button -->
+        <div class="submit-section">
+            <button id="place-order-btn">Place Order</button>
+        </div>
+        <script type="module" src="../app.js/checkout.js"></script>
+    </body>
+</html>

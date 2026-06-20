@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8">
+  <title>Manager Orders</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #0f172a; color: white; font-family: Arial, sans-serif; padding: 12px; }
+    h1 { color: #f97316; font-size: 18px; margin-bottom: 6px; }
+    .subtitle { color: #666; font-size: 16px; margin-bottom: 15px; }
+    .orders-list { display: flex; flex-direction: column; gap: 17px; }
+    .order-row { background: #1e293b; border-radius: 10px; padding: 14px 12px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; border-left: 5px solid #f97316; transition: background 0.2s; }
+    .order-row:hover { background: #263548; }
+    .order-row.ready { border-left-color: #22c55e; }
+    .order-row.served { border-left-color: #64748b; }
+    .order-row.pending { border-left-color: #f97316; }
+    .order-left { display: flex; flex-direction: column; gap: 4px; }
+    .order-num { font-size: 18px; font-weight: bold; color: #f97316; }
+    .order-customer { font-size: 17px; color: #cbd5e1; }
+    .order-time { font-size: 16px; color: #64748b; }
+    .order-right { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+    .order-total { font-size: 17px; font-weight: 550px; color: white; }
+    .status-badge { padding: 4px 10px; border-radius: 20px; font-size: 16px; font-weight: 550px; }
+    .status-badge.pending { background: #f97316; color: white; }
+    .status-badge.ready { background: #22c55e; color: white; }
+    .status-badge.served { background: #64748b; color: white; }
+    .empty { text-align: center; color: #666; font-size: 18px; margin-top: 60px; }
+
+    /* Modal */
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 100; justify-content: center; align-items: center; }
+    .modal-overlay.active { display: flex; }
+    .modal { background: #1e293b; border-radius: 14px; padding: 14px; width: 90%; max-width: 480px; max-height: 80vh; overflow-y: auto; }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    .modal-title { font-size: 17px; font-weight: bold; color: #f97316; }
+    .close-btn { background: none; border: none; color: #aaa; font-size: 17px; cursor: pointer; }
+    .modal-section { margin-bottom: 16px; }
+    .modal-label { font-size: 16px; color: #64748b; margin-bottom: 4px; }
+    .modal-value { font-size: 15px; color: white; }
+    .divider { border: none; border-top: 1px solid #334155; margin: 16px 0; }
+    .item-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #334155; font-size: 16px; }
+    .item-name { color: #cbd5e1; }
+    .item-qty { color: #f97316; font-weight: bold; }
+    .modal-total { display: flex; justify-content: space-between; font-size: 17px; font-weight: bold; margin-top: 12px; }
+
+    @media (max-width: 600px) {
+        .orders-grid, .menu-grid, .lists-grid, .stats-grid {
+            grid-template-columns: 1fr;
+        }
+        body {
+            padding: 12px;
+        }
+        .period-btns {
+            flex-wrap: wrap;
+        }
+        .search-row {
+            flex-direction: column;
+        }
+        .dish-actions {
+            flex-direction: column;
+        }
+    }
+
+    @media (min-width: 601px) and (max-width: 900px) {
+        .orders-grid, .menu-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        .lists-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @media (max-width: 600px) {
+        .menu-grid, .orders-grid, .restaurant-grid {
+            grid-template-columns: 1fr;
+        }
+        body {
+            padding: 12px;
+        }
+        h1 {
+            font-size: 18px;
+        }
+    }
+  </style>
+</head>
+<body>
+     <button onclick="signOut()" style="position: fixed; top: 10px; right: 10px; background: #ef4444; color: white; border: none; padding: 8px; border-radius: 8px; cursor: pointer; font-size: 17px; z-index: 1000;">Sign Out</button>
+  <h1>Orders Board</h1>
+  <p class="subtitle">Tap any order to see details</p>
+  <div class="orders-list" id="orders-container">
+    <p class="empty">Loading orders...</p>
+  </div>
+
+  <!-- Order Detail Modal -->
+  <div class="modal-overlay" id="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title" id="modal-order-num"></span>
+        <button class="close-btn" onclick="closeModal()">x</button>
+      </div>
+      <div class="modal-section">
+        <div class="modal-label">Customer</div>
+        <div class="modal-value" id="modal-customer"></div>
+      </div>
+      <div class="modal-section">
+        <div class="modal-label">Phone</div>
+        <div class="modal-value" id="modal-phone"></div>
+      </div>
+      <div class="modal-section">
+        <div class="modal-label">Status</div>
+        <div class="modal-value" id="modal-status"></div>
+      </div>
+      <div class="modal-section">
+        <div class="modal-label">Time</div>
+        <div class="modal-value" id="modal-time"></div>
+      </div>
+      <hr class="divider">
+      <div class="modal-label">Items</div>
+      <div id="modal-items"></div>
+      <div class="modal-total">
+        <span>Total</span>
+        <span id="modal-total"></span>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { supabase } from '../app.js/supabase.js';
+
+    const {data: {session}} = await supabase.auth.getSession();
+    if (!session) {
+      window.location.href = '../staff/staff-login.html';
+    }
+
+    window.signOut = async function () {
+        await supabase.auth.signOut();
+        window.location.href = '../staff/staff-login.html';
+    }
+
+    let allItems = [];
+
+    async function loadOrders() {
+      const restaurantId = localStorage.getItem('restaurant_id');
+
+      if (!restaurantId) {
+        document.getElementById('orders-container').innerHTML = '<p class="empty">No restaurant selected.</p>';
+        return;
+      }
+
+      const { data: orders, error } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('restaurant-id', restaurantId)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Failed to load orders:', error.message);
+        return;
+      }
+
+      const container = document.getElementById('orders-container');
+
+      if (orders.length === 0) {
+        container.innerHTML = '<p class="empty">No orders yet</p>';
+        return;
+      }
+
+      const orderIds = orders.map(function(o) { return o.id; });
+
+      const { data: items } = await supabase
+        .from('order items')
+        .select('*')
+        .in('order-id', orderIds);
+
+      allItems = items || [];
+      container.innerHTML = '';
+
+      orders.forEach(function(order) {
+        const status = order.status;
+        const time = new Date(order.created_at).toLocaleTimeString();
+        const orderNum = order.id.slice(-4).toUpperCase();
+
+        container.innerHTML += '<div class="order-row ' + status + '" onclick="openModal(\'' + order.id + '\')">' +
+          '<div class="order-left">' +
+          '<span class="order-num">Order #' + orderNum + '</span>' +
+          '<span class="order-customer">' + order['customer-name'] + '</span>' +
+          '<span class="order-time">' + time + '</span>' +
+          '</div>' +
+          '<div class="order-right">' +
+          '<span class="order-total">DZD ' + order['total amount'] + '</span>' +
+          '<span class="status-badge ' + status + '">' + status + '</span>' +
+          '</div>' +
+          '</div>';
+      });
+
+      window._orders = orders;
+    }
+
+    window.openModal = function(orderId) {
+      const order = window._orders.find(function(o) { return o.id === orderId; });
+      const items = allItems.filter(function(i) { return i['order-id'] === orderId; });
+
+      document.getElementById('modal-order-num').innerText = 'Order #' + order.id.slice(-4).toUpperCase();
+      document.getElementById('modal-customer').innerText = order['customer-name'];
+      document.getElementById('modal-phone').innerText = order['customer-phone'];
+      document.getElementById('modal-status').innerText = order.status;
+      document.getElementById('modal-time').innerText = new Date(order.created_at).toLocaleString();
+      document.getElementById('modal-total').innerText = 'DZD ' + order['total amount'];
+
+      let itemsHTML = '';
+      items.forEach(function(i) {
+        itemsHTML += '<div class="item-row">' +
+          '<span class="item-name">' + i['dish_name'] + '</span>' +
+          '<span class="item-qty">x' + i.quantity + '</span>' +
+          '</div>';
+      });
+      document.getElementById('modal-items').innerHTML = itemsHTML;
+
+      document.getElementById('modal-overlay').classList.add('active');
+    };
+
+    window.closeModal = function() {
+      document.getElementById('modal-overlay').classList.remove('active');
+    };
+
+    loadOrders();
+    setInterval(loadOrders, 30000);
+  </script>
+
+  <!-- Bottom Navigation -->
+<div style="position:fixed; bottom:0; left:0; right:0; background:#1e293b; display:flex; border-top:1px solid #334155; z-index:999;">
+  <a href="managers-order-board.html" style="flex:1; padding:8px 4px; text-align:center; text-decoration:none; color:#f97316; font-size:18px;">
+    <div style="font-size:16px;">📋</div>
+    Orders
+  </a>
+  <a href="manager-analytics-dashboard.html" style="flex:1; padding:8px 4px; text-align:center; text-decoration:none; color:#64748b; font-size:18px;">
+    <div style="font-size:16px;">📊</div>
+    Analytics
+  </a>
+  <a href="menu-management.html" style="flex:1; padding:8px 4px; text-align:center; text-decoration:none; color:#64748b; font-size:18px;">
+    <div style="font-size:16px;">🍽️</div>
+    Menu
+  </a>
+  <a href="staff-management.html" style="flex:1; padding:8px 4px; text-align:center; text-decoration:none; color:#64748b; font-size:18px;">
+    <div style="font-size:16px;">👥</div>
+    Staff
+  </a>
+  <a href="restaurant-settings.html" style="flex:1; padding:8px 4px; text-align:center; text-decoration:none; color:#64748b; font-size:18px;">
+    <div style="font-size:16px;">⚙️</div>
+    Settings
+  </a>
+</div>
+
+<!-- Add padding so content doesn't hide behind tabs -->
+<div style="height:40px;"></div>
+
+</body>
+</html>

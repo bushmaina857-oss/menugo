@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Restaurant Settings</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #0f172a; color: white; font-family: Arial, sans-serif; padding: 15px; }
+    h1 { color: #f97316; font-size: 20px; margin-bottom: 10px; }
+    .subtitle { color: #666; font-size: 14px; margin-bottom: 24px; }
+
+    .settings-card { background: #1e293b; border-radius: 14px; padding: 24px; max-width: 500px; }
+    .restaurant-header { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
+    .restaurant-logo { width: 70px; height: 70px; border-radius: 50%; object-fit: cover; background: #334155; }
+    .restaurant-name { font-size: 20px; font-weight: bold; }
+    .restaurant-status { font-size: 17px; margin-top: 4px; }
+    .restaurant-status.open { color: #22c55e; }
+    .restaurant-status.closed { color: #ef4444; }
+
+    .form-group { margin-bottom: 16px; }
+    .form-label { font-size: 23px; color: #94a3b8; margin-bottom: 6px; display: block; }
+    .form-input { width: 100%; padding: 8px 14px; background: #0f172a; border: 1px solid #334155; border-radius: 8px; color: white; font-size: 16px; }
+    .form-input:focus { outline: none; border-color: #f97316; }
+
+    .toggle-row { display: flex; justify-content: space-between; align-items: center; background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 12px 14px; }
+    .toggle-label { font-size: 17px; color: white; }
+    .toggle { position: relative; width: 48px; height: 26px; }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: #334155; border-radius: 26px; cursor: pointer; transition: 0.3s; }
+    .toggle-slider:before { position: absolute; content: ''; height: 20px; width: 20px; left: 3px; bottom: 3px; background: white; border-radius: 50%; transition: 0.3s; }
+    input:checked + .toggle-slider { background: #22c55e; }
+    input:checked + .toggle-slider:before { transform: translateX(22px); }
+
+    .save-btn { width: 100%; padding: 8px; background: #f97316; color: white; border: none; border-radius: 8px; font-size: 17px; font-weight: bold; cursor: pointer; margin-top: 8px; }
+    .save-btn:disabled { background: #334155; cursor: default; }
+    .success-msg { display: none; text-align: center; color: #22c55e; font-size: 17px; margin-top: 12px; }
+
+    @media (max-width: 600px) {
+        .orders-grid, .menu-grid, .lists-grid, .stats-grid {
+            grid-template-columns: 1fr;
+        }
+        body {
+            padding: 12px;
+        }
+        .period-btns {
+            flex-wrap: wrap;
+        }
+        .search-row {
+            flex-direction: column;
+        }
+        .dish-actions {
+            flex-direction: column;
+        }
+    }
+
+    @media (min-width: 601px) and (max-width: 900px) {
+        .orders-grid, .menu-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        .lists-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @media (max-width: 600px) {
+        .menu-grid, .orders-grid, .restaurant-grid {
+            grid-template-columns: 1fr;
+        }
+        body {
+            padding: px;
+        }
+        h1 {
+            font-size: 20px;
+        }
+    }
+  </style>
+</head>
+<body>
+     <button onclick="signOut()" style="position: fixed; top: 10px; right: 10px; background: #ef4444; color: white; border: none; padding: 8px; border-radius: 8px; cursor: pointer; font-size: 16px; z-index: 1000;">Sign Out</button>
+  <h1>Restaurant Settings</h1>
+  <p class="subtitle">Edit your restaurant details</p>
+
+  <div class="settings-card">
+    <div class="restaurant-header">
+      <img class="restaurant-logo" id="preview-logo" src="" alt="Logo">
+      <div>
+        <div class="restaurant-name" id="preview-name">Loading...</div>
+        <div class="restaurant-status" id="preview-status"></div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Restaurant Name</label>
+      <input type="text" class="form-input" id="input-name" placeholder="Restaurant name">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Phone Number</label>
+      <input type="tel" class="form-input" id="input-phone" placeholder="e.g. 0555123456">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Address</label>
+      <input type="text" class="form-input" id="input-address" placeholder="Full address">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Logo URL</label>
+      <input type="text" class="form-input" id="input-logo" placeholder="https://..." oninput="previewLogo(this.value)">
+    </div>
+    <div class="form-group">
+      <div class="toggle-row">
+        <span class="toggle-label">Restaurant is Open</span>
+        <label class="toggle">
+          <input type="checkbox" id="input-isopen" onchange="updateStatusPreview()">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+    </div>
+
+    <button class="save-btn" id="save-btn" onclick="saveSettings()">Save Changes</button>
+    <div class="success-msg" id="success-msg">Settings saved successfully!</div>
+  </div>
+
+  <script type="module">
+    import { supabase } from '../app.js/supabase.js';
+
+    const {data: {session}} = await supabase.auth.getSession();
+    if (!session) {
+      window.location.href = '../staff/staff-login.html';
+    }
+
+    window.signOut = async function () {
+        await supabase.auth.signOut();
+        window.location.href = '../staff/staff-login.html';
+    }
+
+    const restaurantId = localStorage.getItem('restaurant_id');
+
+    async function loadSettings() {
+      if (!restaurantId) return;
+
+      const { data, error } = await supabase
+        .from('restaurants')
+        .select('*')
+        .eq('id', restaurantId)
+        .single();
+
+      if (error) {
+        console.error('Failed to load restaurant:', error.message);
+        return;
+      }
+
+      document.getElementById('input-name').value = data.name || '';
+      document.getElementById('input-phone').value = data.phone || '';
+      document.getElementById('input-address').value = data.address || '';
+      document.getElementById('input-logo').value = data['logo-url'] || '';
+      document.getElementById('input-isopen').checked = data['is-open'] || false;
+
+      document.getElementById('preview-name').innerText = data.name || '';
+      document.getElementById('preview-logo').src = data['logo-url'] || '';
+      updateStatusPreview();
+    }
+
+    window.previewLogo = function(url) {
+      document.getElementById('preview-logo').src = url;
+    };
+
+    window.updateStatusPreview = function() {
+      const isOpen = document.getElementById('input-isopen').checked;
+      const statusEl = document.getElementById('preview-status');
+      statusEl.innerText = isOpen ? 'Open Now' : 'Closed';
+      statusEl.className = 'restaurant-status ' + (isOpen ? 'open' : 'closed');
+    };
+
+    window.saveSettings = async function() {
+      const name = document.getElementById('input-name').value.trim();
+      const phone = document.getElementById('input-phone').value.trim();
+      const address = document.getElementById('input-address').value.trim();
+      const logo = document.getElementById('input-logo').value.trim();
+      const isOpen = document.getElementById('input-isopen').checked;
+
+      if (!name) {
+        alert('Restaurant name is required.');
+        return;
+      }
+
+      const btn = document.getElementById('save-btn');
+      btn.disabled = true;
+      btn.innerText = 'Saving...';
+
+      const { error } = await supabase
+        .from('restaurants')
+        .update({
+          'name': name,
+          'phone': phone,
+          'address': address,
+          'logo-url': logo,
+          'is-open': isOpen
+        })
+        .eq('id', restaurantId);
+
+      btn.disabled = false;
+      btn.innerText = 'Save Changes';
+
+      if (error) {
+        console.error('Save failed:', error.message);
+        alert('Failed to save settings.');
+        return;
+      }
+
+      document.getElementById('preview-name').innerText = name;
+      document.getElementById('success-msg').style.display = 'block';
+      setTimeout(function() {
+        document.getElementById('success-msg').style.display = 'none';
+      }, 3000);
+    };
+
+    loadSettings();
+  </script>
+
+  <!-- Bottom Navigation -->
+<div style="position:fixed; bottom:0; left:0; right:0; background:#1e293b; display:flex; border-top:1px solid #334155; z-index:999;">
+  <a href="managers-order-board.html" style="flex:1; padding:8px 4px; text-align:center; text-decoration:none; color:#64748b; font-size:18px;">
+    <div style="font-size:16px;">📋</div>
+    Orders
+  </a>
+  <a href="manager-analytics-dashboard.html" style="flex:1; padding:8px 4px; text-align:center; text-decoration:none; color:#64748b; font-size:18px;">
+    <div style="font-size:16px;">📊</div>
+    Analytics
+  </a>
+  <a href="menu-management.html" style="flex:1; padding:8px 4px; text-align:center; text-decoration:none; color:#64748b; font-size:18px;">
+    <div style="font-size:16px;">🍽️</div>
+    Menu
+  </a>
+  <a href="staff-management.html" style="flex:1; padding:8px 4px; text-align:center; text-decoration:none; color:#64748b; font-size:18px;">
+    <div style="font-size:16px;">👥</div>
+    Staff
+  </a>
+  <a href="restaurant-settings.html" style="flex:1; padding:8px 4px; text-align:center; text-decoration:none; color:#f97316; font-size:18px;">
+    <div style="font-size:16px;">⚙️</div>
+    Settings
+  </a>
+</div>
+
+<!-- Add padding so content doesn't hide behind tabs -->
+<div style="height:40px;"></div>
+
+</body>
+</html>

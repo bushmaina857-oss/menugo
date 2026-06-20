@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Waiter Orders</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #0f172a; color: white; font-family: Arial, sans-serif; padding: 6px; }
+    h1 { color: #f97316; font-size: 20px; margin-bottom: 6px; }
+    .refresh-info { color: #666; font-size: 17px; margin-bottom: 20px; }
+    .orders-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+    .order-card { background: #1e293b; border-radius: 12px; padding: 8px; border-left: 6px solid #f97316; }
+    .order-card.ready { border-left-color: #22c55e; }
+    .order-card.served { border-left-color: #64748b; opacity: 0.6; }
+    .order-header { display: flex; justify-content: space-between; margin-bottom: 6px; }
+    .order-id { font-size: 18px; font-weight: bold; color: #f97316; }
+    .order-time { font-size: 15px; color: #aaa; }
+    .customer-name { font-size: 17px; color: #cbd5e1; margin-bottom: 10px; }
+    .status-badge { display: inline-block; padding: 4px 12px; border-radius: 15px; font-size: 16px; font-weight: bold; margin-bottom: 12px; }
+    .status-badge.pending { background: #f97316; color: white; }
+    .status-badge.ready { background: #22c55e; color: white; }
+    .status-badge.served { background: #64748b; color: white; }
+    .order-items { margin-bottom: 16px; }
+    .item-row { padding: 6px 0; border-bottom: 1px solid #334155; font-size: 16px; }
+    .item-qty { color: #f97316; font-weight: bold; margin-right: 8px; }
+    .serve-btn { width: 100%; padding: 8px; background: #22c55e; color: white; border: none; border-radius: 12px; font-size: 17px; font-weight: bold; cursor: pointer; }
+    .serve-btn:disabled { background: #334155; cursor: default; }
+    .empty { text-align: center; color: #666; font-size: 18px; margin-top: 60px; }
+    @media (max-width: 600px) {
+        .orders-grid, .menu-grid, .lists-grid, .stats-grid {
+            grid-template-columns: 1fr;
+        }
+        body {
+            padding: 12px;
+        }
+        .period-btns {
+            flex-wrap: wrap;
+        }
+        .search-row {
+            flex-direction: column;
+        }
+        .dish-actions {
+            flex-direction: column;
+        }
+    }
+
+    @media (min-width: 601px) and (max-width: 900px) {
+        .orders-grid, .menu-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        .lists-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @media (max-width: 600px) {
+        .menu-grid, .orders-grid, .restaurant-grid {
+            grid-template-columns: 1fr;
+        }
+        body {
+            padding: 12px;
+        }
+        h1 {
+            font-size: 20px;
+        }
+    }
+  </style>
+</head>
+<body>
+    <button onclick="signOut()" style="position: fixed; top: 10px; right: 10px; background: #ef4444; color: white; border: none; padding: 8px; border-radius: 8px; cursor: pointer; font-size: 13px; z-index: 1000;">Sign Out</button>
+  <h1>Waiter Orders</h1>
+  <p class="refresh-info">Auto-refreshes every 30 seconds</p>
+  <div class="orders-grid" id="orders-container">
+    <p class="empty">Loading orders...</p>
+  </div>
+
+  <script type="module">
+    import { supabase } from '../app.js/supabase.js';
+
+    const {data: {session}} = await supabase.auth.getSession();
+    if (!session) {
+      window.location.href = '../staff/staff-login.html';
+    }
+
+    window.signOut = async function () {
+        await supabase.auth.signOut();
+        window.location.href = '../staff/staff-login.html';
+    }
+
+    async function loadOrders() {
+      const restaurantId = localStorage.getItem('restaurant_id');
+
+      if (!restaurantId) {
+        document.getElementById('orders-container').innerHTML = '<p class="empty">No restaurant selected.</p>';
+        return;
+      }
+
+      const { data: orders, error } = await supabase
+        .from('orders')
+        .select('*')
+        .in('status', ['pending', 'ready', 'served'])
+        .eq('restaurant-id', restaurantId)
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        console.error('Failed to load orders:', error.message);
+        return;
+      }
+
+      const container = document.getElementById('orders-container');
+
+      if (orders.length === 0) {
+        container.innerHTML = '<p class="empty">No active orders</p>';
+        return;
+      }
+
+      const orderIds = orders.map(function(o) { return o.id; });
+
+      const { data: allItems } = await supabase
+        .from('order items')
+        .select('*')
+        .in('order-id', orderIds);
+
+      container.innerHTML = '';
+
+      orders.forEach(function(order) {
+        const items = allItems.filter(function(i) { return i['order-id'] === order.id; });
+        const status = order.status;
+        const time = new Date(order['created_at']).toLocaleTimeString();
+
+        let itemsHTML = '';
+        items.forEach(function(i) {
+          itemsHTML += '<div class="item-row"><span class="item-qty">x' + i.quantity + '</span>' + i['dish_name'] + '</div>';
+        });
+
+        const cardClass = 'order-card ' + status;
+        const badgeClass = 'status-badge ' + status;
+        const badgeText = status === 'pending' ? 'Pending' : status === 'ready' ? 'Ready for Serving' : 'Served';
+        const btnDisabled = status !== 'ready' ? 'disabled' : '';
+        const btnText = status === 'served' ? 'Served' : 'Mark as Served';
+        const orderNum = order.id.slice(-4).toUpperCase();
+
+        container.innerHTML += '<div class="' + cardClass + '">' +
+          '<div class="order-header">' +
+          '<span class="order-id">Order #' + orderNum + '</span>' +
+          '<span class="order-time">' + time + '</span>' +
+          '</div>' +
+          '<div class="customer-name">Customer: ' + order['customer-name'] + '</div>' +
+          '<span class="' + badgeClass + '">' + badgeText + '</span>' +
+          '<div class="order-items">' + itemsHTML + '</div>' +
+          '<button class="serve-btn" onclick="markServed(\'' + order.id + '\')" ' + btnDisabled + '>' + btnText + '</button>' +
+          '</div>';
+      });
+    }
+
+    window.markServed = async function(orderId) {
+      const { error } = await supabase
+        .from('orders')
+        .update({ status: 'served' })
+        .eq('id', orderId);
+
+      if (error) {
+        alert('Failed to update order.');
+        return;
+      }
+      loadOrders();
+    };
+
+    loadOrders();
+    setInterval(loadOrders, 30000);
+  </script>
+</body>
+</html>

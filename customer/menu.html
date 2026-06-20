@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Menu</title>
+        <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+        <script src="app.js"></script>
+    </head>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 12px;
+            background-color: #365e5c;
+        }
+        /*Header styling*/
+        .header {
+            background-color: #241b41;
+            color: #f97316;
+            text-align: center;
+            border-radius: 8px;
+            padding: 8px;
+            text-align: center;
+            margin: 5px 10px;
+            font-size: 18px;
+            font-weight: 600;
+        }
+        /*Search section styling*/
+        .search-section {
+            border-radius: 15px;
+            margin-top: 15px;
+            margin-bottom: 15px;
+            text-align: center;
+            background-color: #868383;
+        }
+        .search-section input {
+            width: 100%;
+            padding: 8px;
+            font-size: 16px;
+            border: 1px solid #76787c;
+            border-radius: 20px;
+            box-sizing: border-box;
+        }
+        /*menu list styling*/
+        .menu-list {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-around;
+            gap: 14px;
+        }
+        .dish-card {
+            background-color: rgb(153, 144, 144);
+            border-radius: 15px;
+            box-shadow: 0 0px 5px rgba(0,0,0,0.1);
+            padding: 7px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            width: 250px;
+            margin: 10px 10px;
+        }
+        
+        .dish-card img {
+            width: 100%;
+            height: 150px;
+            object-fit: cover;
+            border-radius: 10px;
+            margin-bottom: 8px;
+        }
+        .dish-card button {
+            margin-top: 8px;
+            padding: 5px;
+            font-size: 17px;
+            cursor: pointer;
+            border: none;
+            border-radius: 10px;
+            background-color: #196122;
+            color: white;           
+        }
+        
+        /*Floating cart button styling*/
+        .cart-button {
+            position: fixed;
+            bottom: 15px;
+            padding: 8px;
+            background-color: #74d1d4;
+            color: black;
+            border: none;
+            border-radius: 15px;
+            font-size: 17px;
+            font-weight: bold;
+            cursor: pointer;   
+            margin: 0 20px;         
+        }
+
+        @media (max-width: 600px) {
+        .orders-grid, .menu-grid, .lists-grid, .stats-grid, .dish-card {
+            grid-template-columns: 1fr;
+        }
+        body {
+            padding: 12px;
+        }
+        .period-btns {
+            flex-wrap: wrap;
+        }
+        .search-row {
+            flex-direction: column;
+        }
+        .dish-actions {
+            flex-direction: column;
+        }
+    }
+
+    @media (min-width: 601px) and (max-width: 900px) {
+        .orders-grid, .menu-grid, .dish-card {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        .lists-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @media (max-width: 600px) {
+        .menu-grid, .orders-grid, .restaurant-grid, .dish-card {
+            grid-template-columns: 1fr;
+        }
+        body {
+            padding: 12px;
+        }
+        h1 {
+            font-size: 20px;
+        }
+    }
+    </style>
+    <body>
+        <!--Restaurant Header-->
+        <div class="header">
+            <h1>Menu Items</h1>
+        </div>
+       
+        <!--Menu Items-->
+        <div class="menu-list">
+            
+        </div>
+
+        <!--Floating Cart Button-->
+        <div class="cart-button">
+            <button id="main-cart-counter-btn">Cart (0)</button>
+        </div>
+
+        <script type="module" src="../app.js/customer.js"></script>
+        
+    </body>
+</html>

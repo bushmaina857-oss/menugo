@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Staff Login</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #0f172a; color: white; font-family: Arial, sans-serif; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+    .login-card { background: #1e293b; border-radius: 16px; padding: 32px 24px; width: 100%; max-width: 400px; }
+    .logo { text-align: center; margin-bottom: 28px; }
+    .logo h1 { color: #f97316; font-size: 20px; font-weight: bold; }
+    .logo p { color: #64748b; font-size: 18px; margin-top: 4px; }
+    .form-group { margin-bottom: 16px; }
+    .form-label { font-size: 17px; color: #94a3b8; margin-bottom: 6px; display: block; }
+    .form-input { width: 100%; padding: 8px 14px; background: #0f172a; border: 1px solid #334155; border-radius: 8px; color: white; font-size: 16px; }
+    .form-input:focus { outline: none; border-color: #f97316; }
+    .login-btn { width: 100%; padding: 10px; background: #f97316; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 8px; }
+    .login-btn:disabled { background: #334155; cursor: default; }
+    .error-msg { color: #ef4444; font-size: 17px; text-align: center; margin-top: 12px; display: none; }
+  </style>
+</head>
+<body>
+  <div class="login-card">
+    <div class="logo">
+      <h1>MenuGo</h1>
+      <p>Staff Portal</p>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Email</label>
+      <input type="email" class="form-input" id="input-email" placeholder="your@email.com">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Password</label>
+      <input type="password" class="form-input" id="input-password" placeholder="••••••••">
+    </div>
+
+    <button class="login-btn" id="login-btn" onclick="handleLogin()">Sign In</button>
+    <div class="error-msg" id="error-msg"></div>
+  </div>
+
+  <script type="module">
+    import { supabase } from '../app.js/supabase.js';
+
+    async function redirectByRole(userId) {
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('role, restaurant-id')
+        .eq('user_id', userId)
+        .single();
+
+      if (error || !profile) {
+        document.getElementById('error-msg').innerText = 'Profile not found. Contact your manager.';
+        document.getElementById('error-msg').style.display = 'block';
+        await supabase.auth.signOut();
+        return;
+      }
+
+      // Save restaurant id for use across screens
+      localStorage.setItem('restaurant_id', profile['restaurant-id']);
+
+      const role = profile.role.toLowerCase();
+      if (role === 'manager') {
+        window.location.href = '../Manager/managers-order-board.html';
+      } else if (role === 'waiter') {
+        window.location.href = '../waiter/waiters-orders-board.html';
+      } else if (role === 'kitchen') {
+        window.location.href = '../kitchen/kitchen-order-board.html';
+      } else {
+        document.getElementById('error-msg').innerText = 'Unknown role: ' + role;
+        document.getElementById('error-msg').style.display = 'block';
+      }
+    }
+
+    window.handleLogin = async function() {
+      const email = document.getElementById('input-email').value.trim();
+      const password = document.getElementById('input-password').value.trim();
+      const btn = document.getElementById('login-btn');
+      const errorMsg = document.getElementById('error-msg');
+
+      if (!email || !password) {
+        errorMsg.innerText = 'Please enter email and password.';
+        errorMsg.style.display = 'block';
+        return;
+      }
+
+      btn.disabled = true;
+      btn.innerText = 'Signing in...';
+      errorMsg.style.display = 'none';
+
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email,
+        password: password
+      });
+
+      if (error) {
+        errorMsg.innerText = 'Invalid email or password.';
+        errorMsg.style.display = 'block';
+        btn.disabled = false;
+        btn.innerText = 'Sign In';
+        return;
+      }
+
+      redirectByRole(data.user.id);
+    };
+
+    // Allow Enter key
+    document.getElementById('input-password').addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') window.handleLogin();
+    });
+
+      // If already logged in redirect automatically
+    (async function () {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) redirectByRole(session.user.id);
+    })();
+    
+  </script>
+</body>
+</html>

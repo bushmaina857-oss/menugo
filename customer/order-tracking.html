@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Track Order</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #0f172a; color: white; font-family: Arial, sans-serif; padding: 15px; min-height: 100vh; }
+    h1 { color: #f97316; font-size: 20px; margin-bottom: 6px; }
+    .subtitle { color: #666; font-size: 15px; margin-bottom: 18px; }
+
+    /* Search */
+    .search-card { background: #1e293b; border-radius: 12px; padding: 14px; margin-bottom: 15px; }
+    .search-label { font-size: 17px; color: #94a3b8; margin-bottom: 8px; display: block; }
+    .search-row { display: flex; gap: 10px; }
+    .search-input { flex: 1; padding: 8px 14px; background: #0f172a; border: 1px solid #334155; border-radius: 8px; color: white; font-size: 16px; }
+    .search-input:focus { outline: none; border-color: #f97316; }
+    .search-btn { padding: 10px 15px; background: #f97316; color: white; border: none; border-radius: 10px; font-size: 17px; font-weight: bold; cursor: pointer; }
+
+    /* Orders */
+    .orders-list { display: flex; flex-direction: column; gap: 14px; }
+    .order-card { background: #1e293b; border-radius: 12px; padding: 14px; border-left: 5px solid #f97316; }
+    .order-card.ready { border-left-color: #22c55e; }
+    .order-card.served { border-left-color: #64748b; }
+    .order-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .order-num { font-size: 16px; font-weight: bold; color: #f97316; }
+    .order-time { font-size: 15px; color: #64748b; }
+    .status-badge { display: inline-block; padding: 5px 6px; border-radius: 15px; font-size: 15px; font-weight: bold; margin-bottom: 14px; }
+    .status-badge.pending { background: #f97316; color: white; }
+    .status-badge.ready { background: #22c55e; color: white; }
+    .status-badge.served { background: #64748b; color: white; }
+
+    /* Progress steps */
+    .progress { display: flex; align-items: center; margin-bottom: 12px; }
+    .step { display: flex; flex-direction: column; align-items: center; flex: 1; }
+    .step-circle { width: 32px; height: 32px; border-radius: 50%; border: 2px solid #334155; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold; color: #64748b; background: #0f172a; }
+    .step-circle.done { background: #f97316; border-color: #f97316; color: white; }
+    .step-circle.active { background: #22c55e; border-color: #22c55e; color: white; }
+    .step-label { font-size: 17px; color: #64748b; margin-top: 4px; text-align: center; }
+    .step-line { flex: 1; height: 2px; background: #334155; margin: 0 4px; margin-bottom: 16px; }
+    .step-line.done { background: #f97316; }
+
+    .order-total { font-size: 17px; font-weight: bold; color: white; }
+    .total-label { font-size: 17px; color: #64748b; }
+    .empty { text-align: center; color: #666; font-size: 17px; margin-top: 40px; }
+    .refresh-info { color: #666; font-size: 16px; margin-bottom: 16px; }
+
+    @media (max-width: 600px) {
+        .orders-grid, .menu-grid, .lists-grid, .stats-grid {
+            grid-template-columns: 1fr;
+        }
+        body {
+            padding: 12px;
+        }
+        .period-btns {
+            flex-wrap: wrap;
+        }
+        .search-row {
+            flex-direction: column;
+        }
+        .dish-actions {
+            flex-direction: column;
+        }
+    }
+
+    @media (min-width: 601px) and (max-width: 900px) {
+        .orders-grid, .menu-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        .lists-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @media (max-width: 600px) {
+        .menu-grid, .orders-grid, .restaurant-grid {
+            grid-template-columns: 1fr;
+        }
+        body {
+            padding: 12px;
+        }
+        h1 {
+            font-size: 20px;
+        }
+    }
+  </style>
+</head>
+<body>
+  <h1>Track Your Order</h1>
+  <p class="subtitle">Enter your phone number to see your orders</p>
+
+  <div class="search-card">
+    <label class="search-label">Your Phone Number</label>
+    <div class="search-row">
+      <input type="tel" class="search-input" id="phone-input" placeholder="e.g. 0555123456">
+      <button class="search-btn" onclick="trackOrders()">Track</button>
+    </div>
+  </div>
+
+  <div id="results-container"></div>
+
+  <script type="module">
+    import { supabase } from '../app.js/supabase.js';
+
+    let trackingInterval = null;
+    let currentPhone = null;
+
+    function getStepStatus(status, step) {
+      const steps = ['pending', 'ready', 'served'];
+      const currentIndex = steps.indexOf(status);
+      const stepIndex = steps.indexOf(step);
+      if (stepIndex < currentIndex) return 'done';
+      if (stepIndex === currentIndex) return 'active';
+      return '';
+    }
+
+    function renderOrders(orders) {
+      const container = document.getElementById('results-container');
+
+      if (orders.length === 0) {
+        container.innerHTML = '<p class="empty">No orders found for this number.</p>';
+        return;
+      }
+
+      let html = '<p class="refresh-info">Auto-refreshes every 15 seconds</p>';
+      html += '<div class="orders-list">';
+
+      orders.forEach(function(order) {
+        const status = order.status;
+        const time = new Date(order.created_at).toLocaleTimeString();
+        const orderNum = order.id.slice(-4).toUpperCase();
+
+        const pendingClass = 'step-circle ' + (status === 'pending' ? 'active' : status === 'ready' || status === 'served' ? 'done' : '');
+        const readyClass = 'step-circle ' + (status === 'ready' ? 'active' : status === 'served' ? 'done' : '');
+        const servedClass = 'step-circle ' + (status === 'served' ? 'active' : '');
+        const line1Class = 'step-line ' + (status === 'ready' || status === 'served' ? 'done' : '');
+        const line2Class = 'step-line ' + (status === 'served' ? 'done' : '');
+
+        const statusText = status === 'pending' ? 'Preparing your order...' :
+                          status === 'ready' ? 'Your order is ready!' :
+                          'Order served!';
+
+        html += '<div class="order-card ' + status + '">' +
+          '<div class="order-header">' +
+          '<span class="order-num">Order #' + orderNum + '</span>' +
+          '<span class="order-time">' + time + '</span>' +
+          '</div>' +
+          '<span class="status-badge ' + status + '">' + statusText + '</span>' +
+          '<div class="progress">' +
+          '<div class="step"><div class="' + pendingClass + '">1</div><div class="step-label">Preparing</div></div>' +
+          '<div class="' + line1Class + '"></div>' +
+          '<div class="step"><div class="' + readyClass + '">2</div><div class="step-label">Ready</div></div>' +
+          '<div class="' + line2Class + '"></div>' +
+          '<div class="step"><div class="' + servedClass + '">3</div><div class="step-label">Served</div></div>' +
+          '</div>' +
+          '<div class="total-label">Total</div>' +
+          '<div class="order-total">DZD ' + order['total amount'] + '</div>' +
+          '</div>';
+      });
+
+      html += '</div>';
+      container.innerHTML = html;
+    }
+
+    async function fetchOrders(phone) {
+      const { data: orders, error } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('customer-phone', phone)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Tracking error:', error.message);
+        return;
+      }
+
+      renderOrders(orders);
+    }
+
+    window.trackOrders = function() {
+      const phone = document.getElementById('phone-input').value.trim();
+
+      if (!phone) {
+        alert('Please enter your phone number.');
+        return;
+      }
+
+      currentPhone = phone;
+      fetchOrders(phone);
+
+      if (trackingInterval) clearInterval(trackingInterval);
+      trackingInterval = setInterval(function() {
+        fetchOrders(currentPhone);
+      }, 15000);
+    };
+
+    // Allow pressing Enter to search
+    document.getElementById('phone-input').addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') window.trackOrders();
+    });
+  </script>
+  
+    <!-- Botton navigation-->
+        <div style="position:fixed; bottom:0; left:0; right:0; background:#1e293b; display:flex; border-top:1px solid #334155; z-index:999;">
+            <a href="main-page.html" style="flex:1; padding:8px 4px; text-align:center; text-decoration:none; color:#64748b; font-size:18px;">
+            <div style="font-size:16px;">🏠</div>
+            Home
+            </a>
+            <a href="order-tracking.html" style="flex:1; padding:8px 4px; text-align:center; text-decoration:none; color:#f97316; font-size:18px;">
+            <div style="font-size:16px;">📋</div>
+            My Orders
+            </a>
+        </div>
+
+        <!-- Add padding so content doesn't hide behind tabs -->
+        <div style="height:40px;"></div>
+</body>
+</html>

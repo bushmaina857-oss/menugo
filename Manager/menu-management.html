@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Menu Management</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #0f172a; color: white; font-family: Arial, sans-serif; padding: 14px; }
+    h1 { color: #f97316; font-size: 18px; margin-bottom: 16px; }
+
+    .add-btn { background: #f97316; color: white; border: none; padding: 10px 12px; border-radius: 8px; font-size: 17px; font-weight: bold; cursor: pointer; margin-bottom: 20px; }
+
+    .menu-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 18px; }
+    .dish-card { background: #1e293b; border-radius: 12px; overflow: hidden; }
+    .dish-card.unavailable { opacity: 0.5; }
+    .dish-img { width: 100%; height: 160px; object-fit: cover; background: #334155; }
+    .dish-body { padding: 14px; }
+    .dish-name { font-size: 17px; font-weight: bold; color: white; margin-bottom: 4px; }
+    .dish-desc { font-size: 15px; color: #94a3b8; margin-bottom: 8px; }
+    .dish-price { font-size: 17px; font-weight: bold; color: #f97316; margin-bottom: 12px; }
+    .dish-actions { display: flex; gap: 8px; }
+    .btn { flex: 1; padding: 8px; border: none; border-radius: 6px; font-size: 17px; font-weight: bold; cursor: pointer; }
+    .btn-edit { background: #1d4ed8; color: white; }
+    .btn-stock { background: #64748b; color: white; }
+    .btn-available { background: #22c55e; color: white; }
+
+    /* Modal */
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 100; justify-content: center; align-items: center; }
+    .modal-overlay.active { display: flex; }
+    .modal { background: #1e293b; border-radius: 14px; padding: 14px; width: 90%; max-width: 460px; max-height: 90vh; overflow-y: auto; }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .modal-title { font-size: 17px; font-weight: bold; color: #f97316; }
+    .close-btn { background: none; border: none; color: #aaa; font-size: 17px; cursor: pointer; }
+    .form-group { margin-bottom: 14px; }
+    .form-label { font-size: 17px; color: #94a3b8; margin-bottom: 6px; display: block; }
+    .form-input { width: 100%; padding: 10px; background: #0f172a; border: 1px solid #334155; border-radius: 8px; color: white; font-size: 16px; }
+    .form-input:focus { outline: none; border-color: #f97316; }
+    textarea.form-input { resize: vertical; min-height: 80px; }
+    .save-btn { width: 100%; padding: 8px; background: #f97316; color: white; border: none; border-radius: 8px; font-size: 17px; font-weight: bold; cursor: pointer; margin-top: 8px; }
+    .empty { text-align: center; color: #666; font-size: 18px; margin-top: 40px; }
+
+    @media (max-width: 600px) {
+        .orders-grid, .menu-grid, .lists-grid, .stats-grid {
+            grid-template-columns: 1fr;
+        }
+        body {
+            padding: 12px;
+        }
+        .period-btns {
+            flex-wrap: wrap;
+        }
+        .search-row {
+            flex-direction: column;
+        }
+        .dish-actions {
+            flex-direction: column;
+        }
+    }
+
+    @media (min-width: 601px) and (max-width: 900px) {
+        .orders-grid, .menu-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        .lists-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @media (max-width: 600px) {
+        .menu-grid, .orders-grid, .restaurant-grid {
+            grid-template-columns: 1fr;
+        }
+        body {
+            padding: 12px;
+        }
+        h1 {
+            font-size: 18px;
+        }
+    }
+  </style>
+</head>
+<body>
+     <button onclick="signOut()" style="position: fixed; top: 10px; right: 10px; background: #ef4444; color: white; border: none; padding: 8px; border-radius: 8px; cursor: pointer; font-size: 17px; z-index: 1000;">Sign Out</button>
+  <h1>Menu Management</h1>
+  <button class="add-btn" onclick="openAddModal()">+ Add New Dish</button>
+  <div class="menu-grid" id="menu-container">
+    <p class="empty">Loading menu...</p>
+  </div>
+
+  <!-- Add/Edit Modal -->
+  <div class="modal-overlay" id="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title" id="modal-title">Add New Dish</span>
+        <button class="close-btn" onclick="closeModal()">x</button>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Dish Name</label>
+        <input type="text" class="form-input" id="input-name" placeholder="e.g. Chicken Burger">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Description</label>
+        <textarea class="form-input" id="input-desc" placeholder="Describe the dish..."></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Price (DZD)</label>
+        <input type="number" class="form-input" id="input-price" placeholder="e.g. 1500">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Image URL</label>
+        <input type="text" class="form-input" id="input-image" placeholder="https://...">
+      </div>
+      <button class="save-btn" id="save-btn" onclick="saveDish()">Save Dish</button>
+    </div>
+  </div>
+
+  <script type="module">
+    import { supabase } from '../app.js/supabase.js';
+
+    const {data: {session}} = await supabase.auth.getSession();
+    if (!session) {
+      window.location.href = '../staff/staff-login.html';
+    }
+
+    window.signOut = async function () {
+        await supabase.auth.signOut();
+        window.location.href = '../staff/staff-login.html';
+    }
+
+    const restaurantId = localStorage.getItem('restaurant_id');
+    let editingId = null;
+
+    async function loadMenu() {
+      if (!restaurantId) {
+        document.getElementById('menu-container').innerHTML = '<p class="empty">No restaurant selected.</p>';
+        return;
+      }
+
+      const { data: dishes, error } = await supabase
+        .from('menu items')
+        .select('*')
+        .eq('restaurant-id', restaurantId)
+        .order('dish name', { ascending: true });
+
+      if (error) {
+        console.error('Failed to load menu:', error.message);
+        return;
+      }
+
+      const container = document.getElementById('menu-container');
+
+      if (dishes.length === 0) {
+        container.innerHTML = '<p class="empty">No dishes yet. Add your first dish!</p>';
+        return;
+      }
+
+      container.innerHTML = '';
+
+      dishes.forEach(function(dish) {
+        const isAvailable = dish.available;
+        const cardClass = isAvailable ? 'dish-card' : 'dish-card unavailable';
+        const imgSrc = dish.image_url || 'https://via.placeholder.com/280x160?text=No+Image';
+
+        container.innerHTML += '<div class="' + cardClass + '">' +
+          '<img class="dish-img" src="' + imgSrc + '" alt="' + dish['dish name'] + '">' +
+          '<div class="dish-body">' +
+          '<div class="dish-name">' + dish['dish name'] + '</div>' +
+          '<div class="dish-desc">' + (dish.description || '') + '</div>' +
+          '<div class="dish-price">DZD ' + dish.price + '</div>' +
+          '<div class="dish-actions">' +
+          '<button class="btn btn-edit" onclick="openEditModal(\'' + dish.id + '\')">Edit</button>' +
+          (isAvailable
+            ? '<button class="btn btn-stock" onclick="toggleAvailability(\'' + dish.id + '\', false)">Out of Stock</button>'
+            : '<button class="btn btn-available" onclick="toggleAvailability(\'' + dish.id + '\', true)">Mark Available</button>'
+          ) +
+          '</div>' +
+          '</div>' +
+          '</div>';
+      });
+
+      window._dishes = dishes;
+    }
+
+    window.openAddModal = function() {
+      editingId = null;
+      document.getElementById('modal-title').innerText = 'Add New Dish';
+      document.getElementById('input-name').value = '';
+      document.getElementById('input-desc').value = '';
+      document.getElementById('input-price').value = '';
+      document.getElementById('input-image').value = '';
+      document.getElementById('modal-overlay').classList.add('active');
+    };
+
+    window.openEditModal = function(dishId) {
+      const dish = window._dishes.find(function(d) { return d.id === dishId; });
+      editingId = dishId;
+      document.getElementById('modal-title').innerText = 'Edit Dish';
+      document.getElementById('input-name').value = dish['dish name'] || '';
+      document.getElementById('input-desc').value = dish.description || '';
+      document.getElementById('input-price').value = dish.price || '';
+      document.getElementById('input-image').value = dish.image_url || '';
+      document.getElementById('modal-overlay').classList.add('active');
+    };
+
+    window.closeModal = function() {
+      document.getElementById('modal-overlay').classList.remove('active');
+    };
+
+    window.saveDish = async function() {
+      const name = document.getElementById('input-name').value.trim();
+      const desc = document.getElementById('input-desc').value.trim();
+      const price = document.getElementById('input-price').value.trim();
+      const image = document.getElementById('input-image').value.trim();
+
+      if (!name || !price) {
+        alert('Dish name and price are required.');
+        return;
+      }
+
+      const dishData = {
+        'dish name': name,
+        'description': desc,
+        'price': Number(price),
+        'image_url': image,
+        'restaurant-id': restaurantId,
+        'available': true
+      };
+
+      let error;
+
+      if (editingId) {
+        const result = await supabase
+          .from('menu items')
+          .update(dishData)
+          .eq('id', editingId);
+        error = result.error;
+      } else {
+        const result = await supabase
+          .from('menu items')
+          .insert(dishData);
+        error = result.error;
+      }
+
+      if (error) {
+        console.error('Save failed:', error.message);
+        alert('Failed to save dish.');
+        return;
+      }
+
+      closeModal();
+      loadMenu();
+    };
+
+    window.toggleAvailability = async function(dishId, available) {
+      const { error } = await supabase
+        .from('menu items')
+        .update({ available: available })
+        .eq('id', dishId);
+
+      if (error) {
+        alert('Failed to update availability.');
+        return;
+      }
+
+      loadMenu();
+    };
+
+    loadMenu();
+  </script>
+
+  <!-- Bottom Navigation -->
+<div style="position:fixed; bottom:0; left:0; right:0; background:#1e293b; display:flex; border-top:1px solid #334155; z-index:999;">
+  <a href="managers-order-board.html" style="flex:1; padding:8px 4px; text-align:center; text-decoration:none; color:#64748b; font-size:18px;">
+    <div style="font-size:16px;">📋</div>
+    Orders
+  </a>
+  <a href="manager-analytics-dashboard.html" style="flex:1; padding:8px 4px; text-align:center; text-decoration:none; color:#64748b; font-size:18px;">
+    <div style="font-size:16px;">📊</div>
+    Analytics
+  </a>
+  <a href="menu-management.html" style="flex:1; padding:8px 4px; text-align:center; text-decoration:none; color:#f97316; font-size:18px;">
+    <div style="font-size:16px;">🍽️</div>
+    Menu
+  </a>
+  <a href="staff-management.html" style="flex:1; padding:8px 4px; text-align:center; text-decoration:none; color:#64748b; font-size:18px;">
+    <div style="font-size:16px;">👥</div>
+    Staff
+  </a>
+  <a href="restaurant-settings.html" style="flex:1; padding:8px 4px; text-align:center; text-decoration:none; color:#64748b; font-size:18px;">
+    <div style="font-size:16px;">⚙️</div>
+    Settings
+  </a>
+</div>
+
+<!-- Add padding so content doesn't hide behind tabs -->
+<div style="height:40px;"></div>
+
+</body>
+</html>

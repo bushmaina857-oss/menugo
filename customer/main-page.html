@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>MenuGo</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    </head>
+    <style>
+        /* Basic styling for the restaurant homepage */
+        body {  
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 12px;
+            background-color: #334155;
+        }
+        /* Styling for the restaurant header */
+        .restaurant-header {
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);           
+            background-color: rgb(81, 148, 126);
+            padding: 5px;
+            border-radius: 15px;
+            margin: 20px 20px;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+        }
+        /* Styling for the logo */
+        .restaurant-header img {
+            width: 50%;
+            height: 280px;
+            border-radius: 15px;
+        }
+        /* Restaurant name styling */
+        .restaurant-header h1 {
+            margin: 10px 10px;
+            color: #f97316;
+        }
+        /* Open status styling */
+        .restaurant-header p {
+            color: #1e293b;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        .address {
+            color: #f97316;
+        }
+        /* View Menu button styling */
+        .restaurant-header button {
+            background-color: #196122;
+            color: #fff;
+            border: none;
+            padding: 8px;
+            font-size: 17px;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        
+        .restaurants-container {
+            background-color: #365e5c;
+            color: black;                   
+        }
+        @media (max-width: 700px) {
+            .restaurants-container{
+                flex-direction: column;
+            }            
+        }
+        .view-menu-btn:hover {
+            opacity: 0.9;
+        }
+
+        @media (max-width: 600px) {
+        .orders-grid, .menu-grid, .lists-grid, .stats-grid, .restaurant-header {
+            grid-template-columns: 1fr;
+        }
+        body {
+            padding: 12px;
+        }
+        .period-btns {
+            flex-wrap: wrap;
+        }
+        .search-row {
+            flex-direction: column;
+        }
+        .dish-actions {
+            flex-direction: column;
+        }
+    }
+
+    @media (min-width: 601px) and (max-width: 900px) {
+        .orders-grid, .menu-grid, .restaurant-header {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        .lists-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @media (max-width: 600px) {
+        .menu-grid, .orders-grid, .restaurant-grid, .restaurant-header {
+            grid-template-columns: 1fr;
+        }
+        body {
+            padding: 12px;
+        }
+        h1 {
+            font-size: 20px;
+        }
+    }
+    .app-title h2{
+        font-size: 18px;
+        color:#64748b;
+        text-align: center;
+    }
+    .app-title p {
+        color: #64748b;
+        text-align: center;
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 15px;
+    }
+    .app-title {
+        border: black 1px solid;
+        border-radius: 10px;
+        display: flex;
+        flex-direction: column;
+        padding: 4px;
+        background-color: #1e293b;
+        margin: 2px 10px 10px 10px;
+    }
+    .app-title h1 {
+        color: #f97316;
+        font-size: 20px;
+        font-weight: 600;
+        text-align: start;
+        margin-left: 5px;
+    }
+        
+    </style>
+    <body>
+        <div class="app-title">
+            <h1>MenuGo</h1>
+            <h2>Restaurants</h2>
+            <p>Browse available restaurants and order your dish under a minute</p>
+        </div>
+        <div id="restaurants-container"></div>
+        <script type="module" src="../app.js/main-page.js"></script>
+
+    <!-- Botton navigation-->
+        <div style="position:fixed; bottom:0; left:0; right:0; background:#1e293b; display:flex; border-top:1px solid #334155; z-index:999;">
+            <a href="main-page.html" style="flex:1; padding:8px 4px; text-align:center; text-decoration:none; color:#f97316; font-size:18px;">
+            <div style="font-size:16px;">🏠</div>
+            Home
+            </a>
+            <a href="order-tracking.html" style="flex:1; padding:12px 4px; text-align:center; text-decoration:none; color:#64748b; font-size:18px;">
+            <div style="font-size:16px;">📋</div>
+            My Orders
+            </a>
+        </div>
+
+        <!-- Add padding so content doesn't hide behind tabs -->
+        <div style="height:40px;"></div>
+        
+    </body>
+</html>    

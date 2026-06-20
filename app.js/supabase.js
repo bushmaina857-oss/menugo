@@ -1,0 +1,7 @@
+const SUPABASE_URL= "https://ioaafombbizdqocvbfuh.supabase.co";
+const SUPABASE_KEY= "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlvYWFmb21iYml6ZHFvY3ZiZnVoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5MjUyNzgsImV4cCI6MjA5NjUwMTI3OH0.legN3u4MvfBIRLODcKbfzKrJqykNQatnUkelqt92NK8";
+
+export const supabase = window.supabase.createClient(
+    "https://ioaafombbizdqocvbfuh.supabase.co",
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlvYWFmb21iYml6ZHFvY3ZiZnVoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5MjUyNzgsImV4cCI6MjA5NjUwMTI3OH0.legN3u4MvfBIRLODcKbfzKrJqykNQatnUkelqt92NK8"    
+);
