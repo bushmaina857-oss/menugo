@@ -7,16 +7,16 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: #1a1a1a; color: white; font-family: Arial, sans-serif; padding: 12px; }
+    body { background: #1a1a1a; color: white; font-family: Arial, sans-serif; padding: 6px; }
     h1 { color: #f97316; font-size: 20px; margin-bottom: 6px; }
     .refresh-info { color: #666; font-size: 20px; margin-bottom: 20px; }
-    .orders-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
-    .order-card { background: #2a2a2a; border-radius: 12px; padding: 10px; border-left: 6px solid #ef4444; }
+    .orders-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(325px, 1fr)); gap: 16px; }
+    .order-card { background: #2a2a2a; border-radius: 12px; padding: 6px; border-left: 6px solid #ef4444; }
     .order-card.ready { border-left-color: #22c55e; }
     .order-header { display: flex; justify-content: space-between; margin-bottom: 18px; }
     .order-id { font-size: 18px; font-weight: bold; color: #f97316; }
     .order-time { font-size: 16px; color: #aaa; }
-    .status-badge { display: inline-block; padding: 4px 12px; border-radius: 13px; font-size: 16px; font-weight: bold; background: #ef4444; color: white; margin-bottom: 12px; }
+    .status-badge { display: inline-block; padding: 4px 6px; border-radius: 13px; font-size: 16px; font-weight: bold; background: #ef4444; color: white; margin-bottom: 12px; }
     .status-badge.ready { background: #22c55e; }
     .order-items { margin-bottom: 16px; }
     .item-row { padding: 6px 0; border-bottom: 1px solid #333; font-size: 16px; }
@@ -32,7 +32,7 @@
             grid-template-columns: 1fr;
         }
         body {
-            padding: 6px;
+            padding: 12px;
         }
         .period-btns {
             flex-wrap: wrap;
@@ -62,7 +62,7 @@
             grid-template-columns: 1fr;
         }
         body {
-            padding: 6px;
+            padding: 8px;
         }
         h1 {
             font-size: 20px;
